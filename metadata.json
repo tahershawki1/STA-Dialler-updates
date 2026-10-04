@@ -1,0 +1,8 @@
+{
+  "name": "STA Dialer",
+  "description": "Secure telephony dialer with interactive DTMF keypad, smart call manager, and signed APK release update feed",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
