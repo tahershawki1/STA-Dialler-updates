@@ -1,0 +1,9 @@
+{
+  "versionCode": 105,
+  "versionName": "2.5.0",
+  "apkUrl": "https://raw.githubusercontent.com/tahershawki1/STA-Dialler-updates/main/STA-Dialler-v2.5.0-debug.apk",
+  "apkFileName": "STA-Dialler-v2.5.0-debug.apk",
+  "releaseNotes": "واجهة سامسونج One UI الرسمية بالكامل: لوحة أرقام سامسونج، زر الاتصال الأخضر البيضاوي، سجل المكالمات الذكي، وجهات الاتصال، ونظام التحديث التلقائي الفوري بضغطة واحدة من داخل الهاتف.",
+  "mandatory": false,
+  "publishedAt": "2026-10-04"
+}

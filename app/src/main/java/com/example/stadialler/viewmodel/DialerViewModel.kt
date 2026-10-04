@@ -11,6 +11,9 @@ import com.example.stadialler.model.CallRecord
 import com.example.stadialler.model.CallType
 import com.example.stadialler.model.Contact
 import com.example.stadialler.service.DtmfTonePlayer
+import com.example.stadialler.util.AppUpdater
+import com.example.stadialler.util.RemoteUpdateInfo
+import java.io.File
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -405,28 +408,119 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         repository.assignSpeedDial(contactId, key)
     }
 
+    // Remote GitHub Auto-Update States
+    private val _autoUpdatePrompt = MutableStateFlow<RemoteUpdateInfo?>(null)
+    val autoUpdatePrompt: StateFlow<RemoteUpdateInfo?> = _autoUpdatePrompt.asStateFlow()
+
+    private val _isDownloadingUpdate = MutableStateFlow(false)
+    val isDownloadingUpdate: StateFlow<Boolean> = _isDownloadingUpdate.asStateFlow()
+
+    private val _updateDownloadProgress = MutableStateFlow(0f)
+    val updateDownloadProgress: StateFlow<Float> = _updateDownloadProgress.asStateFlow()
+
+    private val _downloadedApkFile = MutableStateFlow<File?>(null)
+    val downloadedApkFile: StateFlow<File?> = _downloadedApkFile.asStateFlow()
+
+    private val _updateDownloadError = MutableStateFlow<String?>(null)
+    val updateDownloadError: StateFlow<String?> = _updateDownloadError.asStateFlow()
+
+    private val _needsInstallPermission = MutableStateFlow(false)
+    val needsInstallPermission: StateFlow<Boolean> = _needsInstallPermission.asStateFlow()
+
+    init {
+        // Automatic silent check on app start
+        checkForAppUpdate(silent = true)
+    }
+
+    // -------------------------------------------------------------
+    // Real In-App GitHub Auto-Updater
+    // -------------------------------------------------------------
+    fun checkForAppUpdate(silent: Boolean = false) {
+        viewModelScope.launch {
+            _isCheckingUpdates.value = true
+            _updateMessage.value = "جاري التحقق من وجود تحديثات على GitHub..."
+
+            val result = AppUpdater.checkForUpdate()
+            _isCheckingUpdates.value = false
+
+            result.onSuccess { info ->
+                if (info != null && info.versionCode > currentVersionCode) {
+                    _autoUpdatePrompt.value = info
+                    _updateMessage.value = "يوجد تحديث جديد: v${info.versionName}"
+                } else {
+                    _autoUpdatePrompt.value = null
+                    if (!silent) {
+                        _updateMessage.value = "أنت تستخدم أحدث إصدار بالفعل (v$currentVersionName)."
+                    }
+                }
+            }.onFailure { error ->
+                if (!silent) {
+                    _updateMessage.value = "تعذر الاتصال بـ GitHub: ${error.localizedMessage ?: "خطأ غير معروف"}"
+                }
+            }
+        }
+    }
+
+    fun startDownloadAndInstall(context: android.content.Context, info: RemoteUpdateInfo) {
+        viewModelScope.launch {
+            _isDownloadingUpdate.value = true
+            _updateDownloadProgress.value = 0.01f
+            _updateDownloadError.value = null
+            _updateMessage.value = "جاري تنزيل التحديث v${info.versionName}..."
+
+            val result = AppUpdater.downloadApk(
+                context = context,
+                apkUrl = info.apkUrl,
+                onProgress = { progress ->
+                    _updateDownloadProgress.value = progress
+                }
+            )
+
+            _isDownloadingUpdate.value = false
+
+            result.onSuccess { apkFile ->
+                _downloadedApkFile.value = apkFile
+                _updateMessage.value = "اكتمل التنزيل! جاري فتح نافذة التثبيت..."
+
+                if (AppUpdater.canRequestPackageInstalls(context)) {
+                    val installResult = AppUpdater.installApk(context, apkFile)
+                    if (installResult.isFailure) {
+                        _updateDownloadError.value = "فشل تشغيل مثبت الحزم: ${installResult.exceptionOrNull()?.message}"
+                    }
+                } else {
+                    _needsInstallPermission.value = true
+                }
+            }.onFailure { error ->
+                _updateDownloadError.value = "فشل التنزيل: ${error.localizedMessage ?: "خطأ غير معروف"}"
+                _updateMessage.value = "فشل تنزيل ملف التحديث"
+            }
+        }
+    }
+
+    fun installDownloadedApk(context: android.content.Context) {
+        val file = _downloadedApkFile.value ?: return
+        if (AppUpdater.canRequestPackageInstalls(context)) {
+            _needsInstallPermission.value = false
+            AppUpdater.installApk(context, file)
+        } else {
+            AppUpdater.openInstallPermissionSettings(context)
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        _autoUpdatePrompt.value = null
+        _updateDownloadError.value = null
+    }
+
+    fun dismissInstallPermissionDialog() {
+        _needsInstallPermission.value = false
+    }
+
     // -------------------------------------------------------------
     // Signed APK Updates Feed Actions
     // -------------------------------------------------------------
     fun checkForUpdates() {
-        viewModelScope.launch {
-            _isCheckingUpdates.value = true
-            _updateMessage.value = "Connecting to $releaseRepoName feed..."
-            delay(1000)
-
-            val result = repository.checkRemoteUpdateFeed()
-            _isCheckingUpdates.value = false
-            if (result.isSuccess) {
-                val latest = availableUpdate.value
-                if (latest != null) {
-                    _updateMessage.value = "New release found: ${latest.versionName} (${latest.channel})"
-                } else {
-                    _updateMessage.value = "STA Dialer is up to date (v$currentVersionName)."
-                }
-            } else {
-                _updateMessage.value = "Feed check completed. Using verified cached signatures."
-            }
-        }
+        checkForAppUpdate(silent = false)
     }
 
     fun downloadAndVerifyApk(release: ApkRelease) {
