@@ -1,10 +1,13 @@
 package com.example.stadialler
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -50,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -140,6 +144,26 @@ fun MainAppContent(viewModel: DialerViewModel) {
     val updateDownloadError by viewModel.updateDownloadError.collectAsState()
     val needsInstallPermission by viewModel.needsInstallPermission.collectAsState()
     val context = LocalContext.current
+
+    // Real Android Runtime Permissions Launcher (Contacts, Call Log, Phone)
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        viewModel.updatePermissionStates(context)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.updatePermissionStates(context)
+        permissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.READ_CONTACTS,
+                Manifest.permission.WRITE_CONTACTS,
+                Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.WRITE_CALL_LOG,
+                Manifest.permission.CALL_PHONE
+            )
+        )
+    }
 
     // Back handling
     if (callState != CallState.IDLE) {

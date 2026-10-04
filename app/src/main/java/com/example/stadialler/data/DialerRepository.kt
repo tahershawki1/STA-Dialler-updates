@@ -6,6 +6,7 @@ import com.example.stadialler.model.ApkRelease
 import com.example.stadialler.model.CallRecord
 import com.example.stadialler.model.CallType
 import com.example.stadialler.model.Contact
+import com.example.stadialler.util.DeviceContentHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -124,6 +125,36 @@ class DialerRepository(private val context: Context) {
         }
         _contacts.value = current
         saveContactsToPrefs(current)
+    }
+
+    suspend fun syncDeviceContacts() {
+        val deviceList = DeviceContentHelper.fetchDeviceContacts(context)
+        if (deviceList.isNotEmpty()) {
+            val currentMap = _contacts.value.associateBy { it.phoneNumber.replace(Regex("[^0-9]"), "") }
+            val merged = deviceList.map { deviceContact ->
+                val clean = deviceContact.phoneNumber.replace(Regex("[^0-9]"), "")
+                val existing = currentMap[clean]
+                if (existing != null) {
+                    deviceContact.copy(
+                        speedDialKey = existing.speedDialKey,
+                        isFavorite = deviceContact.isFavorite || existing.isFavorite,
+                        extension = existing.extension ?: deviceContact.extension
+                    )
+                } else {
+                    deviceContact
+                }
+            }
+            _contacts.value = merged
+            saveContactsToPrefs(merged)
+        }
+    }
+
+    suspend fun syncDeviceCallLog() {
+        val deviceRecords = DeviceContentHelper.fetchDeviceCallLog(context)
+        if (deviceRecords.isNotEmpty()) {
+            _callHistory.value = deviceRecords
+            saveCallHistoryToPrefs(deviceRecords)
+        }
     }
 
     // -------------------------------------------------------------

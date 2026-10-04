@@ -1,9 +1,9 @@
 {
-  "versionCode": 106,
-  "versionName": "2.5.1",
-  "apkUrl": "https://raw.githubusercontent.com/tahershawki1/STA-Dialler-updates/main/STA-Dialler-v2.5.1-debug.apk",
-  "apkFileName": "STA-Dialler-v2.5.1-debug.apk",
-  "releaseNotes": "تحديث شامل وحقيقي: تفعيل الاتصال الخلوي الحقيقي بالـ SIM، فتح تطبيق الرسائل SMS، مكالمات الفيديو، البحث الفوري في سجل المكالمات، إضافة جهات الاتصال مباشرة، وحذف جهات الاتصال وسجل المكالمات، مع نظام التحديث التلقائي المباشر.",
+  "versionCode": 107,
+  "versionName": "2.5.2",
+  "apkUrl": "https://raw.githubusercontent.com/tahershawki1/STA-Dialler-updates/main/STA-Dialler-v2.5.2-debug.apk",
+  "apkFileName": "STA-Dialler-v2.5.2-debug.apk",
+  "releaseNotes": "تطبيق هاتف حقيقي متكامل: صلاحيات قراءة جهات اتصال الهاتف الحقيقية وسجل المكالمات، مزامنة تلقائية مع الهاتف، حفظ الأسماء الجديدة في جهات اتصال جهازك، مع جميع أزرار الاتصال والرسائل والمكالمات الحقيقية.",
   "mandatory": false,
   "publishedAt": "2026-10-04"
 }

@@ -12,6 +12,7 @@ import com.example.stadialler.model.CallType
 import com.example.stadialler.model.Contact
 import com.example.stadialler.service.DtmfTonePlayer
 import com.example.stadialler.util.AppUpdater
+import com.example.stadialler.util.DeviceContentHelper
 import com.example.stadialler.util.RemoteUpdateInfo
 import java.io.File
 import kotlinx.coroutines.Job
@@ -39,8 +40,8 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private val dtmfPlayer = DtmfTonePlayer(application)
 
     // Current app version details
-    val currentVersionName = "2.5.1"
-    val currentVersionCode = 106
+    val currentVersionName = "2.5.2"
+    val currentVersionCode = 107
     val releaseRepoName = "tahershawki1/STA-Dialler-updates"
 
     // Keypad & Dial Input
@@ -452,6 +453,40 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         clearHistory()
     }
 
+    // Device Sync & Permission States
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private val _hasContactsPermission = MutableStateFlow(false)
+    val hasContactsPermission: StateFlow<Boolean> = _hasContactsPermission.asStateFlow()
+
+    private val _hasCallLogPermission = MutableStateFlow(false)
+    val hasCallLogPermission: StateFlow<Boolean> = _hasCallLogPermission.asStateFlow()
+
+    fun updatePermissionStates(context: android.content.Context) {
+        val hasContacts = DeviceContentHelper.hasContactsPermission(context)
+        val hasLogs = DeviceContentHelper.hasCallLogPermission(context)
+        _hasContactsPermission.value = hasContacts
+        _hasCallLogPermission.value = hasLogs
+        if (hasContacts || hasLogs) {
+            syncDeviceData()
+        }
+    }
+
+    fun syncDeviceData() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+            try {
+                repository.syncDeviceContacts()
+                repository.syncDeviceCallLog()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isSyncing.value = false
+            }
+        }
+    }
+
     // -------------------------------------------------------------
     // Contacts Actions
     // -------------------------------------------------------------
@@ -471,6 +506,9 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
             extension = extension
         )
         repository.addOrUpdateContact(contact)
+        viewModelScope.launch {
+            DeviceContentHelper.saveContactToDevice(getApplication(), name, phoneNumber)
+        }
     }
 
     fun toggleFavorite(contactId: String) {

@@ -1,5 +1,7 @@
 package com.example.stadialler.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -39,6 +41,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -90,7 +94,16 @@ fun HistoryScreen(
     val history by viewModel.filteredHistory.collectAsState()
     val currentFilter by viewModel.historyFilter.collectAsState()
     val historySearchQuery by viewModel.historySearchQuery.collectAsState()
+    val hasCallLogPermission by viewModel.hasCallLogPermission.collectAsState()
     val context = LocalContext.current
+
+    val callLogPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.updatePermissionStates(context)
+        }
+    }
 
     var isSearchActive by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
@@ -244,6 +257,47 @@ fun HistoryScreen(
         }
 
         Spacer(modifier = Modifier.height(6.dp))
+
+        if (!hasCallLogPermission) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SamsungBlue.copy(alpha = 0.12f))
+                    .padding(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "عرض سجل المكالمات الحقيقي",
+                            color = SamsungTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "اضغط للموافقة على قراءة سجل المكالمات من هاتفك.",
+                            color = SamsungTextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            callLogPermissionLauncher.launch(android.Manifest.permission.READ_CALL_LOG)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SamsungBlue),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("السماح", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         if (history.isEmpty()) {
             Box(

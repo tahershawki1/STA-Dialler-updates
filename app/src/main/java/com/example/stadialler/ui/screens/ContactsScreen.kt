@@ -1,5 +1,7 @@
 package com.example.stadialler.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -72,7 +74,18 @@ fun ContactsScreen(
 ) {
     val contacts by viewModel.filteredContacts.collectAsState()
     val searchQuery by viewModel.contactSearchQuery.collectAsState()
+    val hasContactsPermission by viewModel.hasContactsPermission.collectAsState()
+    val isSyncing by viewModel.isSyncing.collectAsState()
     val context = LocalContext.current
+
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.updatePermissionStates(context)
+        }
+    }
+
     var isSearchActive by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -163,6 +176,47 @@ fun ContactsScreen(
         }
 
         Spacer(modifier = Modifier.height(4.dp))
+
+        if (!hasContactsPermission) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SamsungGreen.copy(alpha = 0.12f))
+                    .padding(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "عرض أسماء هاتفك",
+                            color = SamsungTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "اضغط للموافقة على قراءة جهات الاتصال المسجلة على هذا الهاتف.",
+                            color = SamsungTextSecondary,
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SamsungGreen),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("السماح", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
