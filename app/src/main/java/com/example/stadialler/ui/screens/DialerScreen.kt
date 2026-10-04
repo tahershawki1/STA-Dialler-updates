@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -29,18 +27,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.FiberManualRecord
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -52,14 +50,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,18 +65,15 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.stadialler.model.Contact
 import com.example.stadialler.ui.components.DialPad
-import com.example.stadialler.ui.theme.AmberUpdate
-import com.example.stadialler.ui.theme.CyanAccent
-import com.example.stadialler.ui.theme.CyanLight
-import com.example.stadialler.ui.theme.CyanPrimary
-import com.example.stadialler.ui.theme.DarkBackground
-import com.example.stadialler.ui.theme.DarkSurface
-import com.example.stadialler.ui.theme.DarkSurfaceVariant
-import com.example.stadialler.ui.theme.GreenConnect
-import com.example.stadialler.ui.theme.KeypadButtonBorder
-import com.example.stadialler.ui.theme.TextMuted
-import com.example.stadialler.ui.theme.TextPrimary
-import com.example.stadialler.ui.theme.TextSecondary
+import com.example.stadialler.ui.theme.SamsungBlue
+import com.example.stadialler.ui.theme.SamsungDarkBg
+import com.example.stadialler.ui.theme.SamsungDivider
+import com.example.stadialler.ui.theme.SamsungGreen
+import com.example.stadialler.ui.theme.SamsungSurface
+import com.example.stadialler.ui.theme.SamsungSurfaceVariant
+import com.example.stadialler.ui.theme.SamsungTextMuted
+import com.example.stadialler.ui.theme.SamsungTextPrimary
+import com.example.stadialler.ui.theme.SamsungTextSecondary
 import com.example.stadialler.viewmodel.DialerViewModel
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -88,28 +81,25 @@ import com.example.stadialler.viewmodel.DialerViewModel
 fun DialerScreen(
     viewModel: DialerViewModel,
     onNavigateToUpdates: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToContacts: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dialInput by viewModel.dialInput.collectAsState()
     val suggestions by viewModel.matchedSuggestions.collectAsState()
-    val sipExt by viewModel.sipExt.collectAsState()
-    val isTls by viewModel.isTls.collectAsState()
-    val availableUpdate by viewModel.availableUpdate.collectAsState()
-
-    var isKeypadVisible by remember { mutableStateOf(true) }
-    var showContextMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showContextMenu by remember { mutableStateOf(false) }
 
     val clipboardManager = LocalClipboardManager.current
     var clipboardNumber by remember { mutableStateOf<String?>(null) }
 
-    // Helper to refresh clipboard number detection
     fun checkClipboard() {
         try {
             val clipText = clipboardManager.getText()?.text?.trim()
             if (!clipText.isNullOrBlank()) {
                 val clean = clipText.replace(Regex("[^0-9+*#]"), "")
-                // If it contains at least 3 digits and is not identical to current input
                 if (clean.length >= 3 && clean != dialInput) {
                     clipboardNumber = clipText
                 } else {
@@ -123,12 +113,10 @@ fun DialerScreen(
         }
     }
 
-    // Refresh on composition and whenever dialInput changes
     LaunchedEffect(dialInput) {
         checkClipboard()
     }
 
-    // Refresh whenever activity is resumed (user copied number from another app and switched back)
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -142,20 +130,10 @@ fun DialerScreen(
         }
     }
 
-    // Hide keypad when scrolling up in suggestions list
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { (index, offset) ->
-                if ((index > 0 || offset > 30) && isKeypadVisible) {
-                    isKeypadVisible = false
-                }
-            }
-    }
-
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(SamsungDarkBg)
     ) {
         Column(
             modifier = Modifier
@@ -163,95 +141,96 @@ fun DialerScreen(
                 .padding(horizontal = 14.dp, vertical = 6.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Top Bar: PBX Status, Keypad Toggle & Update Pill
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // 1. Samsung One UI Top App Bar: [Search] [3-Dots Menu]
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onNavigateToContacts,
+                    modifier = Modifier.size(42.dp).testTag("samsung_search_btn")
                 ) {
-                    // PBX Status Chip
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(DarkSurfaceVariant)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FiberManualRecord,
-                            contentDescription = "Online Status",
-                            tint = GreenConnect,
-                            modifier = Modifier.size(8.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "EXT $sipExt • ${if (isTls) "TLS 1.3" else "UDP"}",
-                            color = CyanAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-
-                    // Keypad Toggle / Hide indicator when visible
-                    if (isKeypadVisible && suggestions.isNotEmpty()) {
-                        IconButton(
-                            onClick = { isKeypadVisible = false },
-                            modifier = Modifier.size(32.dp).testTag("collapse_keypad_arrow")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Hide Keypad",
-                                tint = TextSecondary
-                            )
-                        }
-                    }
-
-                    // Update notification badge if update available from repo feed
-                    if (availableUpdate != null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(AmberUpdate.copy(alpha = 0.2f))
-                                .border(1.dp, AmberUpdate, RoundedCornerShape(20.dp))
-                                .clickable { onNavigateToUpdates() }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                                .testTag("dialer_update_pill")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SystemUpdate,
-                                contentDescription = "Update Available",
-                                tint = AmberUpdate,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "v${availableUpdate?.versionName}",
-                                color = AmberUpdate,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "بحث / Search",
+                        tint = SamsungTextPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
-                // 2. Requirement: "في حالة تم نسخ رقم من مكان اخر يظهر في الاعلى زر Paste number from clipboard"
-                AnimatedVisibility(
-                    visible = clipboardNumber != null,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
+                Box {
+                    IconButton(
+                        onClick = { showMenu = true },
+                        modifier = Modifier.size(42.dp).testTag("samsung_more_options")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "خيارات إضافية / More Options",
+                            tint = SamsungTextPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    // Samsung One UI Dropdown Menu
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(SamsungSurfaceVariant)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("أرقام الاتصال السريع", color = SamsungTextPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Speed, null, tint = SamsungGreen, modifier = Modifier.size(20.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToContacts()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("الضبط / Settings", color = SamsungTextPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Settings, null, tint = SamsungBlue, modifier = Modifier.size(20.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToSettings()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("تحديثات التطبيق", color = SamsungTextPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Default.SystemUpdate, null, tint = SamsungBlue, modifier = Modifier.size(20.dp))
+                            },
+                            onClick = {
+                                showMenu = false
+                                onNavigateToUpdates()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // 2. Smart Paste Pill (When clipboard has copied number)
+            AnimatedVisibility(
+                visible = clipboardNumber != null,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(CyanPrimary.copy(alpha = 0.16f))
-                            .border(1.dp, CyanPrimary, RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(SamsungSurfaceVariant)
+                            .border(1.dp, SamsungDivider, RoundedCornerShape(20.dp))
                             .clickable {
                                 clipboardNumber?.let {
                                     val clean = it.replace(Regex("[^0-9+*#,;]"), "")
@@ -259,66 +238,45 @@ fun DialerScreen(
                                     clipboardNumber = null
                                 }
                             }
-                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                            .padding(horizontal = 16.dp, vertical = 7.dp)
                             .testTag("paste_clipboard_button"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentPaste,
-                                contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = "Paste number from clipboard",
-                                    color = CyanLight,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = clipboardNumber ?: "",
-                                    color = TextPrimary,
-                                    fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Paste",
-                            tint = CyanAccent,
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.Default.ContentPaste,
+                            contentDescription = null,
+                            tint = SamsungGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "لصق الرقم المنسوخ: ${clipboardNumber?.take(16)}",
+                            color = SamsungTextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
 
-            // 3. Suggestions List (Above the dialed number box!)
-            // Requirement: Hidden completely when empty; only shows matching suggestions when typing!
+            // 3. Samsung Viewing Area (Suggestions appear only when typing)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(vertical = 2.dp)
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.BottomCenter
             ) {
                 if (dialInput.isNotEmpty()) {
                     if (suggestions.isEmpty()) {
+                        // Clean empty state when no matching contacts
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "لا توجد أسماء مطابقة للأرقام المدخلة",
-                                color = TextMuted,
+                                text = "لا توجد أسماء مطابقة",
+                                color = SamsungTextMuted,
                                 fontSize = 13.sp
                             )
                         }
@@ -330,23 +288,13 @@ fun DialerScreen(
                                 .testTag("suggestions_list"),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            item {
-                                Text(
-                                    text = "الاقتراحات المطابقة (${suggestions.size})",
-                                    color = TextMuted,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-
                             items(suggestions, key = { it.id }) { contact ->
-                                SuggestionContactCard(
+                                SamsungSuggestionItem(
                                     contact = contact,
                                     onCallClick = {
                                         viewModel.startCall(contact.phoneNumber, contact.name)
                                     },
-                                    onCardClick = {
+                                    onItemClick = {
                                         viewModel.setDialInput(contact.phoneNumber)
                                     }
                                 )
@@ -356,28 +304,61 @@ fun DialerScreen(
                 }
             }
 
-            // 4. Requirement: "حقل الكتابة يكون بدون خلفية او حواف و بدون اي شئ داخله"
-            // Requirement: "اجعل الكتابة تكون من المنتصف في حقل الكتابة بدلا من جهة اليسار"
+            // 4. Samsung One UI "+ Add to contacts" Action Pill (appears when dialing)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(38.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (dialInput.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(SamsungSurfaceVariant)
+                            .clickable {
+                                onNavigateToContacts()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .testTag("add_to_contacts_pill"),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = SamsungGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "إضافة إلى جهات الاتصال",
+                            color = SamsungTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            // 5. Dialed Number Field (Centered, completely borderless & transparent)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
                     .combinedClickable(
-                        onClick = { isKeypadVisible = true },
+                        onClick = {},
                         onLongClick = { showContextMenu = true }
                     )
                     .padding(horizontal = 8.dp)
                     .testTag("dial_input_box"),
                 contentAlignment = Alignment.Center
             ) {
-                // Centered Dialed Number (nothing rendered inside when empty!)
                 if (dialInput.isNotEmpty()) {
                     Text(
                         text = dialInput,
-                        color = TextPrimary,
-                        fontSize = if (dialInput.length > 13) 24.sp else 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
+                        color = SamsungTextPrimary,
+                        fontSize = if (dialInput.length > 13) 26.sp else 34.sp,
+                        fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         modifier = Modifier
@@ -385,10 +366,10 @@ fun DialerScreen(
                             .testTag("dial_input_text")
                     )
 
-                    // Action Controls on Left and Right sides when dialInput is not empty
+                    // Quick Copy Icon on the left side
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
@@ -399,21 +380,9 @@ fun DialerScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy number",
-                                tint = TextSecondary,
-                                modifier = Modifier.size(19.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { viewModel.onBackspace() },
-                            modifier = Modifier.size(38.dp).testTag("inline_backspace_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Backspace,
-                                contentDescription = "Delete",
-                                tint = CyanAccent,
-                                modifier = Modifier.size(22.dp)
+                                contentDescription = "نسخ الرقم",
+                                tint = SamsungTextSecondary,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -423,13 +392,13 @@ fun DialerScreen(
                 DropdownMenu(
                     expanded = showContextMenu,
                     onDismissRequest = { showContextMenu = false },
-                    modifier = Modifier.background(DarkSurfaceVariant)
+                    modifier = Modifier.background(SamsungSurfaceVariant)
                 ) {
                     if (dialInput.isNotEmpty()) {
                         DropdownMenuItem(
-                            text = { Text("نسخ الرقم / Copy", color = TextPrimary) },
+                            text = { Text("نسخ الرقم", color = SamsungTextPrimary) },
                             leadingIcon = {
-                                Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, tint = CyanAccent)
+                                Icon(Icons.Default.ContentCopy, null, tint = SamsungGreen, modifier = Modifier.size(18.dp))
                             },
                             onClick = {
                                 clipboardManager.setText(AnnotatedString(dialInput))
@@ -440,9 +409,9 @@ fun DialerScreen(
                     val clip = clipboardManager.getText()?.text
                     if (!clip.isNullOrBlank()) {
                         DropdownMenuItem(
-                            text = { Text("لصق / Paste", color = TextPrimary) },
+                            text = { Text("لصق", color = SamsungTextPrimary) },
                             leadingIcon = {
-                                Icon(imageVector = Icons.Default.ContentPaste, contentDescription = null, tint = CyanAccent)
+                                Icon(Icons.Default.ContentPaste, null, tint = SamsungGreen, modifier = Modifier.size(18.dp))
                             },
                             onClick = {
                                 val clean = clip.replace(Regex("[^0-9+*#,;]"), "")
@@ -456,65 +425,35 @@ fun DialerScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 5. Dialpad Keypad (With increased button height to 64dp!)
-            AnimatedVisibility(
-                visible = isKeypadVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                DialPad(
-                    onDigitPress = { digit -> viewModel.onKeyPress(digit) },
-                    onSpeedDialLongPress = { digit -> viewModel.onSpeedDialLongPress(digit) },
-                    onBackspace = { viewModel.onBackspace() },
-                    onClearAll = { viewModel.onClearDialInput() },
-                    onStartCall = { isCarrier ->
-                        viewModel.startCall(dialInput, launchSystemDialer = isCarrier)
-                    },
-                    hasInput = dialInput.isNotEmpty()
-                )
-            }
-        }
-
-        // 6. Floating Action Button at Bottom-Right when keypad is hidden
-        AnimatedVisibility(
-            visible = !isKeypadVisible,
-            enter = scaleIn() + fadeIn(),
-            exit = scaleOut() + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 20.dp)
-        ) {
-            FloatingActionButton(
-                onClick = { isKeypadVisible = true },
-                containerColor = CyanPrimary,
-                contentColor = DarkBackground,
-                modifier = Modifier.testTag("show_keypad_fab")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Dialpad,
-                    contentDescription = "إظهار لوحة الأرقام / Show Keypad",
-                    modifier = Modifier.size(26.dp)
-                )
-            }
+            // 6. Samsung Keypad & Green Call Button
+            DialPad(
+                onDigitPress = { digit -> viewModel.onKeyPress(digit) },
+                onSpeedDialLongPress = { digit -> viewModel.onSpeedDialLongPress(digit) },
+                onBackspace = { viewModel.onBackspace() },
+                onClearAll = { viewModel.onClearDialInput() },
+                onStartCall = { isCarrier ->
+                    viewModel.startCall(dialInput, launchSystemDialer = isCarrier)
+                },
+                hasInput = dialInput.isNotEmpty()
+            )
         }
     }
 }
 
 @Composable
-fun SuggestionContactCard(
+fun SamsungSuggestionItem(
     contact: Contact,
     onCallClick: () -> Unit,
-    onCardClick: () -> Unit
+    onItemClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(DarkSurface)
-            .border(1.dp, KeypadButtonBorder, RoundedCornerShape(12.dp))
-            .clickable(onClick = onCardClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .testTag("suggestion_card_${contact.id}"),
+            .clip(RoundedCornerShape(16.dp))
+            .background(SamsungSurface)
+            .clickable(onClick = onItemClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+            .testTag("suggestion_item_${contact.id}"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -524,53 +463,32 @@ fun SuggestionContactCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, CyanPrimary.copy(alpha = 0.5f), CircleShape),
+                    .background(SamsungSurfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = contact.name.take(1).uppercase(),
-                    color = CyanAccent,
-                    fontSize = 15.sp,
+                    color = SamsungGreen,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = contact.name,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (contact.speedDialKey != null) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(CyanPrimary.copy(alpha = 0.2f))
-                                .padding(horizontal = 5.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = "سرعة ${contact.speedDialKey}",
-                                color = CyanAccent,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
                 Text(
-                    text = "${contact.phoneNumber}${if (!contact.extension.isNullOrBlank()) " • تحويلة ${contact.extension}" else ""}",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace
+                    text = contact.name,
+                    color = SamsungTextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = contact.phoneNumber,
+                    color = SamsungTextSecondary,
+                    fontSize = 13.sp
                 )
             }
         }
@@ -578,15 +496,15 @@ fun SuggestionContactCard(
         IconButton(
             onClick = onCallClick,
             modifier = Modifier
-                .size(36.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(GreenConnect.copy(alpha = 0.15f))
+                .background(SamsungGreen.copy(alpha = 0.15f))
         ) {
             Icon(
                 imageVector = Icons.Default.Call,
                 contentDescription = "اتصال",
-                tint = GreenConnect,
-                modifier = Modifier.size(18.dp)
+                tint = SamsungGreen,
+                modifier = Modifier.size(19.dp)
             )
         }
     }
