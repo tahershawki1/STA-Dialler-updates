@@ -79,6 +79,7 @@ fun DialPad(
     onBackspace: () -> Unit,
     onClearAll: () -> Unit,
     onStartCall: (isCarrier: Boolean) -> Unit,
+    onVideoCall: () -> Unit = {},
     hasInput: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -127,7 +128,7 @@ fun DialPad(
             ) {
                 if (hasInput) {
                     IconButton(
-                        onClick = { onStartCall(false) },
+                        onClick = onVideoCall,
                         modifier = Modifier
                             .size(50.dp)
                             .clip(CircleShape)

@@ -37,11 +37,17 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -53,7 +59,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -89,8 +97,11 @@ fun DialerScreen(
     val suggestions by viewModel.matchedSuggestions.collectAsState()
     val listState = rememberLazyListState()
 
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var showContextMenu by remember { mutableStateOf(false) }
+    var showAddContactDialog by remember { mutableStateOf(false) }
+    var newContactName by remember { mutableStateOf("") }
 
     val clipboardManager = LocalClipboardManager.current
     var clipboardNumber by remember { mutableStateOf<String?>(null) }
@@ -292,7 +303,7 @@ fun DialerScreen(
                                 SamsungSuggestionItem(
                                     contact = contact,
                                     onCallClick = {
-                                        viewModel.startCall(contact.phoneNumber, contact.name)
+                                        viewModel.makeRealCall(context, contact.phoneNumber, contact.name)
                                     },
                                     onItemClick = {
                                         viewModel.setDialInput(contact.phoneNumber)
@@ -317,7 +328,8 @@ fun DialerScreen(
                             .clip(RoundedCornerShape(18.dp))
                             .background(SamsungSurfaceVariant)
                             .clickable {
-                                onNavigateToContacts()
+                                newContactName = ""
+                                showAddContactDialog = true
                             }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                             .testTag("add_to_contacts_pill"),
@@ -431,10 +443,70 @@ fun DialerScreen(
                 onSpeedDialLongPress = { digit -> viewModel.onSpeedDialLongPress(digit) },
                 onBackspace = { viewModel.onBackspace() },
                 onClearAll = { viewModel.onClearDialInput() },
-                onStartCall = { isCarrier ->
-                    viewModel.startCall(dialInput, launchSystemDialer = isCarrier)
+                onStartCall = {
+                    viewModel.onGreenCallButtonPressed(context)
+                },
+                onVideoCall = {
+                    viewModel.startVideoCall(context, dialInput)
                 },
                 hasInput = dialInput.isNotEmpty()
+            )
+        }
+
+        // Add Contact Dialog directly from Dialer
+        if (showAddContactDialog) {
+            AlertDialog(
+                onDismissRequest = { showAddContactDialog = false },
+                shape = RoundedCornerShape(22.dp),
+                containerColor = SamsungSurfaceVariant,
+                title = {
+                    Text(
+                        text = "إضافة جهة اتصال جديدة",
+                        color = SamsungTextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "رقم الهاتف: $dialInput",
+                            color = SamsungGreen,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        OutlinedTextField(
+                            value = newContactName,
+                            onValueChange = { newContactName = it },
+                            label = { Text("الاسم الكامل") },
+                            placeholder = { Text("أدخل اسم جهة الاتصال...") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = SamsungTextPrimary,
+                                unfocusedTextColor = SamsungTextPrimary,
+                                focusedBorderColor = SamsungGreen
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (newContactName.isNotBlank() && dialInput.isNotBlank()) {
+                                viewModel.addContact(newContactName.trim(), dialInput.trim())
+                                showAddContactDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SamsungGreen)
+                    ) {
+                        Text("حفظ جهة الاتصال", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAddContactDialog = false }) {
+                        Text("إلغاء", color = SamsungTextSecondary)
+                    }
+                }
             )
         }
     }

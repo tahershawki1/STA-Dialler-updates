@@ -39,8 +39,8 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private val dtmfPlayer = DtmfTonePlayer(application)
 
     // Current app version details
-    val currentVersionName = "2.5.0"
-    val currentVersionCode = 105
+    val currentVersionName = "2.5.1"
+    val currentVersionCode = 106
     val releaseRepoName = "tahershawki1/STA-Dialler-updates"
 
     // Keypad & Dial Input
@@ -157,15 +157,29 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private var callTimerJob: Job? = null
     private var callFlowJob: Job? = null
 
-    // History Filter
+    // History Filter & Search
     private val _historyFilter = MutableStateFlow<CallType?>(null)
     val historyFilter: StateFlow<CallType?> = _historyFilter.asStateFlow()
 
+    private val _historySearchQuery = MutableStateFlow("")
+    val historySearchQuery: StateFlow<String> = _historySearchQuery.asStateFlow()
+
+    fun setHistorySearchQuery(query: String) {
+        _historySearchQuery.value = query
+    }
+
     val filteredHistory: StateFlow<List<CallRecord>> = combine(
         repository.callHistory,
-        _historyFilter
-    ) { history, filter ->
-        if (filter == null) history else history.filter { it.type == filter }
+        _historyFilter,
+        _historySearchQuery
+    ) { history, filter, query ->
+        var list = if (filter == null) history else history.filter { it.type == filter }
+        if (query.isNotBlank()) {
+            list = list.filter {
+                it.number.contains(query) || (it.contactName?.contains(query, ignoreCase = true) == true)
+            }
+        }
+        list
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // Contacts & Search
@@ -245,30 +259,90 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     // -------------------------------------------------------------
     // Call Flow & Control
     // -------------------------------------------------------------
+    fun makeRealCall(context: android.content.Context, number: String, contactName: String? = null) {
+        val cleanNumber = number.trim()
+        if (cleanNumber.isBlank()) return
+
+        // Record outgoing call in history
+        repository.addCallRecord(
+            CallRecord(
+                number = cleanNumber,
+                contactName = contactName ?: matchedContact.value?.name,
+                type = CallType.OUTGOING,
+                carrierOrLine = "SIM 1"
+            )
+        )
+
+        val uri = Uri.parse("tel:${Uri.encode(cleanNumber)}")
+        try {
+            val callIntent = Intent(Intent.ACTION_CALL, uri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(callIntent)
+        } catch (e: Exception) {
+            try {
+                val dialIntent = Intent(Intent.ACTION_DIAL, uri).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(dialIntent)
+            } catch (e2: Exception) {
+                // fallback to in-app call
+                startCall(cleanNumber, contactName, launchSystemDialer = false)
+            }
+        }
+    }
+
+    fun onGreenCallButtonPressed(context: android.content.Context) {
+        val currentInput = _dialInput.value.trim()
+        if (currentInput.isEmpty()) {
+            // Samsung behavior: recall last call from history if input is blank
+            val lastRecord = repository.callHistory.value.firstOrNull()
+            if (lastRecord != null) {
+                _dialInput.value = lastRecord.number
+            }
+        } else {
+            makeRealCall(context, currentInput, matchedContact.value?.name)
+        }
+    }
+
+    fun sendSms(context: android.content.Context, number: String) {
+        val clean = number.trim()
+        if (clean.isBlank()) return
+        try {
+            val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:${Uri.encode(clean)}")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback: standard send intent
+            val genericIntent = Intent(Intent.ACTION_VIEW).apply {
+                data = Uri.parse("sms:$clean")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(genericIntent)
+        }
+    }
+
+    fun startVideoCall(context: android.content.Context, number: String) {
+        val clean = number.replace(Regex("[^0-9+]"), "")
+        if (clean.isBlank()) return
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            makeRealCall(context, clean)
+        }
+    }
+
     fun startCall(number: String, contactName: String? = null, launchSystemDialer: Boolean = false) {
         val targetNumber = if (number.isNotBlank()) number else _dialInput.value
         if (targetNumber.isBlank()) return
 
         if (launchSystemDialer) {
-            try {
-                val intent = Intent(Intent.ACTION_DIAL).apply {
-                    data = Uri.parse("tel:${Uri.encode(targetNumber)}")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                getApplication<Application>().startActivity(intent)
-                // Record in history
-                repository.addCallRecord(
-                    CallRecord(
-                        number = targetNumber,
-                        contactName = contactName ?: matchedContact.value?.name,
-                        type = CallType.OUTGOING,
-                        carrierOrLine = "System Cellular"
-                    )
-                )
-                return
-            } catch (e: Exception) {
-                // fallback to in-app simulation
-            }
+            makeRealCall(getApplication(), targetNumber, contactName)
+            return
         }
 
         _activeCallNumber.value = targetNumber
@@ -372,6 +446,10 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearHistory() {
         repository.clearCallHistory()
+    }
+
+    fun clearCallHistory() {
+        clearHistory()
     }
 
     // -------------------------------------------------------------

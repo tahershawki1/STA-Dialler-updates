@@ -29,6 +29,8 @@ import androidx.compose.material.icons.automirrored.filled.CallReceived
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -43,6 +45,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,6 +89,10 @@ fun HistoryScreen(
 ) {
     val history by viewModel.filteredHistory.collectAsState()
     val currentFilter by viewModel.historyFilter.collectAsState()
+    val historySearchQuery by viewModel.historySearchQuery.collectAsState()
+    val context = LocalContext.current
+
+    var isSearchActive by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showClearDialog by remember { mutableStateOf(false) }
 
@@ -117,11 +126,11 @@ fun HistoryScreen(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = { /* Search in recents */ },
+                    onClick = { isSearchActive = !isSearchActive },
                     modifier = Modifier.size(40.dp).testTag("recents_search_btn")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
                         contentDescription = "بحث",
                         tint = SamsungTextPrimary,
                         modifier = Modifier.size(24.dp)
@@ -169,6 +178,36 @@ fun HistoryScreen(
                     }
                 }
             }
+        }
+
+        // Real-time Search Input Field in Recents
+        if (isSearchActive) {
+            OutlinedTextField(
+                value = historySearchQuery,
+                onValueChange = { viewModel.setHistorySearchQuery(it) },
+                placeholder = { Text("بحث في سجل المكالمات بالاسم أو الرقم...", color = SamsungTextMuted) },
+                singleLine = true,
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = SamsungTextPrimary,
+                    unfocusedTextColor = SamsungTextPrimary,
+                    focusedBorderColor = SamsungGreen,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = SamsungSurfaceVariant,
+                    unfocusedContainerColor = SamsungSurfaceVariant
+                ),
+                trailingIcon = {
+                    if (historySearchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setHistorySearchQuery("") }) {
+                            Icon(Icons.Default.Close, "مسح", tint = SamsungTextSecondary)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .testTag("recents_search_field")
+            )
         }
 
         // 2. Samsung One UI Filter Tabs: [الكل] [الفائتة]
@@ -255,7 +294,13 @@ fun HistoryScreen(
                         SamsungRecentsItem(
                             record = record,
                             onCallClick = {
-                                viewModel.startCall(record.number, record.contactName)
+                                viewModel.makeRealCall(context, record.number, record.contactName)
+                            },
+                            onMessageClick = {
+                                viewModel.sendSms(context, record.number)
+                            },
+                            onVideoClick = {
+                                viewModel.startVideoCall(context, record.number)
                             },
                             onDeleteClick = {
                                 viewModel.deleteCallRecord(record.id)
@@ -275,7 +320,7 @@ fun HistoryScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.clearHistory()
+                        viewModel.clearCallHistory()
                         showClearDialog = false
                     }
                 ) {
@@ -297,6 +342,8 @@ fun HistoryScreen(
 fun SamsungRecentsItem(
     record: CallRecord,
     onCallClick: () -> Unit,
+    onMessageClick: () -> Unit,
+    onVideoClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -461,7 +508,7 @@ fun SamsungRecentsItem(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable { /* Send SMS */ }
+                            .clickable(onClick = onMessageClick)
                             .padding(8.dp)
                     ) {
                         Box(
@@ -487,7 +534,7 @@ fun SamsungRecentsItem(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(CircleShape)
-                            .clickable(onClick = onCallClick)
+                            .clickable(onClick = onVideoClick)
                             .padding(8.dp)
                     ) {
                         Box(

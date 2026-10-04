@@ -1,7 +1,9 @@
 package com.example.stadialler.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
@@ -45,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,6 +72,7 @@ fun ContactsScreen(
 ) {
     val contacts by viewModel.filteredContacts.collectAsState()
     val searchQuery by viewModel.contactSearchQuery.collectAsState()
+    val context = LocalContext.current
     var isSearchActive by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
 
@@ -220,7 +225,8 @@ fun ContactsScreen(
                 items(favorites, key = { "fav_${it.id}" }) { contact ->
                     SamsungContactCard(
                         contact = contact,
-                        onCall = { viewModel.startCall(contact.phoneNumber, contact.name) },
+                        onCall = { viewModel.makeRealCall(context, contact.phoneNumber, contact.name) },
+                        onMessage = { viewModel.sendSms(context, contact.phoneNumber) },
                         onToggleFavorite = { viewModel.toggleFavorite(contact.id) },
                         onDelete = { viewModel.deleteContact(contact.id) }
                     )
@@ -241,7 +247,8 @@ fun ContactsScreen(
             items(contacts, key = { it.id }) { contact ->
                 SamsungContactCard(
                     contact = contact,
-                    onCall = { viewModel.startCall(contact.phoneNumber, contact.name) },
+                    onCall = { viewModel.makeRealCall(context, contact.phoneNumber, contact.name) },
+                    onMessage = { viewModel.sendSms(context, contact.phoneNumber) },
                     onToggleFavorite = { viewModel.toggleFavorite(contact.id) },
                     onDelete = { viewModel.deleteContact(contact.id) }
                 )
@@ -319,19 +326,26 @@ fun ContactsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SamsungContactCard(
     contact: Contact,
     onCall: () -> Unit,
+    onMessage: () -> Unit,
     onToggleFavorite: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(SamsungSurface)
-            .clickable(onClick = onCall)
+            .combinedClickable(
+                onClick = onCall,
+                onLongClick = { showDeleteConfirm = true }
+            )
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .testTag("contact_item_${contact.id}"),
         verticalAlignment = Alignment.CenterVertically,
@@ -374,19 +388,36 @@ fun SamsungContactCard(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(34.dp)) {
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = "المفضلة",
                     tint = if (contact.isFavorite) Color(0xFFFFB300) else SamsungTextMuted,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(19.dp)
                 )
             }
 
             IconButton(
+                onClick = onMessage,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(SamsungBlue.copy(alpha = 0.15f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Chat,
+                    contentDescription = "رسالة",
+                    tint = SamsungBlue,
+                    modifier = Modifier.size(17.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            IconButton(
                 onClick = onCall,
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(SamsungGreen.copy(alpha = 0.15f))
             ) {
@@ -394,9 +425,35 @@ fun SamsungContactCard(
                     imageVector = Icons.Default.Call,
                     contentDescription = "اتصال",
                     tint = SamsungGreen,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("حذف جهة الاتصال؟", color = SamsungTextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("هل تريد بالتأكيد حذف جهة الاتصال ${contact.name}؟", color = SamsungTextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SamsungRed)
+                ) {
+                    Text("حذف", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("إلغاء", color = SamsungTextSecondary)
+                }
+            },
+            containerColor = SamsungSurfaceVariant,
+            shape = RoundedCornerShape(22.dp)
+        )
     }
 }
