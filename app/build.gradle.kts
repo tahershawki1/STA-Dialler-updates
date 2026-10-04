@@ -12,8 +12,8 @@ android {
         applicationId = "com.aistudio.stadialler.qvmrpx"
         minSdk = 26
         targetSdk = 36
-        versionCode = 104
-        versionName = "2.4.1"
+        versionCode = 105
+        versionName = "2.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

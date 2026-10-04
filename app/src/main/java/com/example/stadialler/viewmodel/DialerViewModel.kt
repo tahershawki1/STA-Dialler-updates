@@ -36,8 +36,8 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
     private val dtmfPlayer = DtmfTonePlayer(application)
 
     // Current app version details
-    val currentVersionName = "2.4.1"
-    val currentVersionCode = 104
+    val currentVersionName = "2.5.0"
+    val currentVersionCode = 105
     val releaseRepoName = "tahershawki1/STA-Dialler-updates"
 
     // Keypad & Dial Input
