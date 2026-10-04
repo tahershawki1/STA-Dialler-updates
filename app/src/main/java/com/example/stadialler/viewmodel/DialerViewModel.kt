@@ -382,6 +382,21 @@ class DialerViewModel(application: Application) : AndroidViewModel(application) 
         repository.addOrUpdateContact(contact)
     }
 
+    fun addContact(name: String, phoneNumber: String, extension: String? = null) {
+        val contact = Contact(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name,
+            phoneNumber = phoneNumber,
+            extension = extension
+        )
+        repository.addOrUpdateContact(contact)
+    }
+
+    fun toggleFavorite(contactId: String) {
+        val contact = repository.contacts.value.find { it.id == contactId } ?: return
+        repository.addOrUpdateContact(contact.copy(isFavorite = !contact.isFavorite))
+    }
+
     fun deleteContact(id: String) {
         repository.deleteContact(id)
     }

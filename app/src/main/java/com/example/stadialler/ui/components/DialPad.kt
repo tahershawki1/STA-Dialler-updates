@@ -19,7 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Voicemail
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -34,14 +35,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.stadialler.ui.theme.CyanAccent
-import com.example.stadialler.ui.theme.CyanLight
-import com.example.stadialler.ui.theme.CyanPrimary
-import com.example.stadialler.ui.theme.DarkSurfaceVariant
-import com.example.stadialler.ui.theme.GreenConnect
-import com.example.stadialler.ui.theme.TextMuted
-import com.example.stadialler.ui.theme.TextPrimary
-import com.example.stadialler.ui.theme.TextSecondary
+import com.example.stadialler.ui.theme.SamsungGreen
+import com.example.stadialler.ui.theme.SamsungSurfaceVariant
+import com.example.stadialler.ui.theme.SamsungTextMuted
+import com.example.stadialler.ui.theme.SamsungTextPrimary
+import com.example.stadialler.ui.theme.SamsungTextSecondary
 
 data class KeypadKey(
     val digit: Char,
@@ -50,9 +48,9 @@ data class KeypadKey(
     val speedDialSlot: Int? = null
 )
 
-private val keypadRows = listOf(
+val samsungKeypadRows = listOf(
     listOf(
-        KeypadKey('1', "VOICEMAIL", "بريد صوتي", 1),
+        KeypadKey('1', "", "", 1),
         KeypadKey('2', "ABC", "أ ب ت ث", 2),
         KeypadKey('3', "DEF", "ج ح خ د", 3)
     ),
@@ -63,13 +61,13 @@ private val keypadRows = listOf(
     ),
     listOf(
         KeypadKey('7', "PQRS", "ق ك ل م", 7),
-        KeypadKey('8', "TUV", "ن هـ و", 8),
-        KeypadKey('9', "WXYZ", "ي ى ء ة", 9)
+        KeypadKey('8', "TUV", "ن ه ة و ؤ", 8),
+        KeypadKey('9', "WXYZ", "ي ى ئ ء", 9)
     ),
     listOf(
-        KeypadKey('*', "PAUSE", "*"),
+        KeypadKey('*', "", "", null),
         KeypadKey('0', "+", "+", null),
-        KeypadKey('#', "WAIT", "#")
+        KeypadKey('#', "", "", null)
     )
 )
 
@@ -87,17 +85,17 @@ fun DialPad(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        keypadRows.forEach { rowKeys ->
+        samsungKeypadRows.forEach { rowKeys ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 rowKeys.forEach { key ->
-                    KeypadButton(
+                    SamsungKeypadButton(
                         key = key,
                         onClick = { onDigitPress(key.digit) },
                         onLongClick = {
@@ -112,64 +110,67 @@ fun DialPad(
             }
         }
 
-        // Bottom Action Bar: [Carrier Quick Call] [BIG CALL BUTTON] [BACKSPACE]
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Samsung Bottom Call Row: [Video Call] [Signature Samsung Green Pill Call Button] [Backspace]
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp, bottom = 4.dp),
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Carrier fallback call
+            // Left Action: Samsung Video Call Button (or placeholder)
             Box(
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(62.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (hasInput) {
                     IconButton(
-                        onClick = { onStartCall(true) },
+                        onClick = { onStartCall(false) },
                         modifier = Modifier
                             .size(50.dp)
                             .clip(CircleShape)
-                            .background(DarkSurfaceVariant)
-                            .testTag("carrier_call_button")
+                            .background(SamsungSurfaceVariant)
+                            .testTag("video_call_button")
                     ) {
                         Icon(
-                            imageVector = Icons.Default.PhoneInTalk,
-                            contentDescription = "Carrier Cellular Call",
-                            tint = CyanAccent,
-                            modifier = Modifier.size(22.dp)
+                            imageVector = Icons.Default.Videocam,
+                            contentDescription = "Video Call",
+                            tint = SamsungTextPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
 
-            // Main Primary Call Button (Green)
+            // Center Action: Signature Samsung Green Call Pill Button
             Box(
                 modifier = Modifier
-                    .size(68.dp)
-                    .clip(CircleShape)
-                    .background(GreenConnect)
-                    .testTag("call_button")
+                    .width(84.dp)
+                    .height(58.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .background(SamsungGreen)
                     .combinedClickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = ripple(color = Color.White),
                         onClick = { onStartCall(false) },
                         onLongClick = { onStartCall(true) }
-                    ),
+                    )
+                    .testTag("call_button"),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Call,
-                    contentDescription = "Initiate Secure Call",
+                    contentDescription = "Call",
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(30.dp)
                 )
             }
 
-            // Backspace Button
+            // Right Action: Samsung Backspace Button
             Box(
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(62.dp),
                 contentAlignment = Alignment.Center
             ) {
                 if (hasInput) {
@@ -177,21 +178,20 @@ fun DialPad(
                         modifier = Modifier
                             .size(50.dp)
                             .clip(CircleShape)
-                            .background(DarkSurfaceVariant)
-                            .testTag("backspace_button")
                             .combinedClickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = ripple(color = Color.White),
                                 onClick = onBackspace,
                                 onLongClick = onClearAll
-                            ),
+                            )
+                            .testTag("backspace_button"),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Backspace,
-                            contentDescription = "Delete Digit",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(22.dp)
+                            contentDescription = "Backspace",
+                            tint = SamsungTextPrimary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -202,21 +202,20 @@ fun DialPad(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun KeypadButton(
+fun SamsungKeypadButton(
     key: KeypadKey,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Increased button height for comfortable touch response
     Box(
         modifier = modifier
-            .width(98.dp)
+            .width(100.dp)
             .height(64.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(20.dp))
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = CyanPrimary.copy(alpha = 0.35f)),
+                indication = ripple(color = SamsungGreen.copy(alpha = 0.25f)),
                 onClick = onClick,
                 onLongClick = onLongClick
             )
@@ -229,19 +228,27 @@ fun KeypadButton(
         ) {
             Text(
                 text = key.digit.toString(),
-                color = TextPrimary,
-                fontSize = 27.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 27.sp
+                color = SamsungTextPrimary,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 28.sp
             )
-            if (key.digit in '2'..'9') {
+
+            if (key.digit == '1') {
+                Icon(
+                    imageVector = Icons.Default.Voicemail,
+                    contentDescription = "Voicemail",
+                    tint = SamsungTextMuted,
+                    modifier = Modifier.size(13.dp)
+                )
+            } else if (key.digit in '2'..'9') {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = key.enLetters,
-                        color = TextSecondary,
+                        color = SamsungTextSecondary,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.5.sp
@@ -249,18 +256,20 @@ fun KeypadButton(
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = "• ${key.arLetters}",
-                        color = CyanLight.copy(alpha = 0.9f),
+                        color = SamsungTextMuted,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Normal
                     )
                 }
-            } else if (key.enLetters.isNotEmpty()) {
+            } else if (key.digit == '0') {
                 Text(
-                    text = key.enLetters,
-                    color = TextMuted,
-                    fontSize = 8.5.sp,
-                    fontWeight = FontWeight.Medium
+                    text = "+",
+                    color = SamsungTextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
+            } else {
+                Spacer(modifier = Modifier.height(11.dp))
             }
         }
     }

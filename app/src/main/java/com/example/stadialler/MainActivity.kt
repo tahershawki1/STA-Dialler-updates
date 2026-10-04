@@ -20,15 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.SystemUpdate
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -42,8 +36,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.stadialler.ui.components.ActiveCallSheet
@@ -52,29 +48,32 @@ import com.example.stadialler.ui.screens.DialerScreen
 import com.example.stadialler.ui.screens.HistoryScreen
 import com.example.stadialler.ui.screens.SettingsScreen
 import com.example.stadialler.ui.screens.UpdatesScreen
-import com.example.stadialler.ui.theme.AmberUpdate
-import com.example.stadialler.ui.theme.CyanAccent
-import com.example.stadialler.ui.theme.CyanPrimary
-import com.example.stadialler.ui.theme.DarkBackground
-import com.example.stadialler.ui.theme.DarkSurface
 import com.example.stadialler.ui.theme.STADiallerTheme
-import com.example.stadialler.ui.theme.TextMuted
-import com.example.stadialler.ui.theme.TextPrimary
-import com.example.stadialler.ui.theme.TextSecondary
+import com.example.stadialler.ui.theme.SamsungDarkBg
+import com.example.stadialler.ui.theme.SamsungGreen
+import com.example.stadialler.ui.theme.SamsungSurface
+import com.example.stadialler.ui.theme.SamsungTextMuted
+import com.example.stadialler.ui.theme.SamsungTextSecondary
 import com.example.stadialler.viewmodel.CallState
 import com.example.stadialler.viewmodel.DialerViewModel
 
-enum class NavigationTab(
+// Samsung One UI Classic 3-Tab Bottom Navigation
+enum class SamsungNavigationTab(
     val title: String,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
     val testTag: String
 ) {
-    DIALER("Dialer", Icons.Filled.Dialpad, Icons.Outlined.Dialpad, "tab_dialer"),
-    HISTORY("History", Icons.Filled.History, Icons.Outlined.History, "tab_history"),
-    CONTACTS("Directory", Icons.Filled.People, Icons.Outlined.People, "tab_contacts"),
-    UPDATES("Updates", Icons.Filled.SystemUpdate, Icons.Outlined.SystemUpdate, "tab_updates"),
-    SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, "tab_settings")
+    KEYPAD("لوحة المفاتيح", Icons.Filled.Dialpad, Icons.Outlined.Dialpad, "tab_keypad"),
+    RECENTS("الأخيرة", Icons.Filled.History, Icons.Outlined.History, "tab_recents"),
+    CONTACTS("جهات الاتصال", Icons.Filled.People, Icons.Outlined.People, "tab_contacts")
+}
+
+// Sub-screens opened from Samsung More Options menu
+enum class SecondaryScreen {
+    NONE,
+    SETTINGS,
+    UPDATES
 }
 
 class MainActivity : ComponentActivity() {
@@ -94,7 +93,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainAppContent(viewModel: DialerViewModel) {
-    var selectedTab by remember { mutableStateOf(NavigationTab.DIALER) }
+    var selectedTab by remember { mutableStateOf(SamsungNavigationTab.KEYPAD) }
+    var secondaryScreen by remember { mutableStateOf(SecondaryScreen.NONE) }
+
     val callState by viewModel.callState.collectAsState()
     val activeNumber by viewModel.activeCallNumber.collectAsState()
     val activeName by viewModel.activeCallName.collectAsState()
@@ -103,76 +104,64 @@ fun MainAppContent(viewModel: DialerViewModel) {
     val isSpeakerOn by viewModel.isSpeakerOn.collectAsState()
     val isOnHold by viewModel.isOnHold.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
-    val availableUpdate by viewModel.availableUpdate.collectAsState()
 
     // Back handling
     if (callState != CallState.IDLE) {
         BackHandler {
-            // Cannot dismiss during active call without ending call
             viewModel.endCall()
         }
-    } else if (selectedTab != NavigationTab.DIALER) {
+    } else if (secondaryScreen != SecondaryScreen.NONE) {
         BackHandler {
-            selectedTab = NavigationTab.DIALER
+            secondaryScreen = SecondaryScreen.NONE
+        }
+    } else if (selectedTab != SamsungNavigationTab.KEYPAD) {
+        BackHandler {
+            selectedTab = SamsungNavigationTab.KEYPAD
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
-            containerColor = DarkBackground,
+            containerColor = SamsungDarkBg,
             bottomBar = {
-                NavigationBar(
-                    containerColor = DarkSurface,
-                    modifier = Modifier
-                        .windowInsetsPadding(WindowInsets.navigationBars)
-                        .testTag("bottom_nav_bar")
-                ) {
-                    NavigationTab.entries.forEach { tab ->
-                        val isSelected = selectedTab == tab
-                        val isUpdatesTab = tab == NavigationTab.UPDATES && availableUpdate != null
+                if (secondaryScreen == SecondaryScreen.NONE) {
+                    NavigationBar(
+                        containerColor = SamsungSurface,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                            .testTag("samsung_bottom_nav_bar")
+                    ) {
+                        SamsungNavigationTab.entries.forEach { tab ->
+                            val isSelected = selectedTab == tab
 
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = { selectedTab = tab },
-                            icon = {
-                                if (isUpdatesTab) {
-                                    BadgedBox(
-                                        badge = {
-                                            Badge(
-                                                containerColor = AmberUpdate,
-                                                modifier = Modifier.testTag("update_nav_badge")
-                                            )
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                                            contentDescription = tab.title
-                                        )
-                                    }
-                                } else {
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = { selectedTab = tab },
+                                icon = {
                                     Icon(
                                         imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
                                         contentDescription = tab.title
                                     )
-                                }
-                            },
-                            label = {
-                                Text(
-                                    text = tab.title,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
-                                )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = DarkBackground,
-                                selectedTextColor = CyanAccent,
-                                indicatorColor = CyanPrimary,
-                                unselectedIconColor = TextMuted,
-                                unselectedTextColor = TextSecondary
-                            ),
-                            modifier = Modifier.testTag(tab.testTag)
-                        )
+                                },
+                                label = {
+                                    Text(
+                                        text = tab.title,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = SamsungGreen,
+                                    selectedTextColor = SamsungGreen,
+                                    indicatorColor = SamsungGreen.copy(alpha = 0.15f),
+                                    unselectedIconColor = SamsungTextMuted,
+                                    unselectedTextColor = SamsungTextSecondary
+                                ),
+                                modifier = Modifier.testTag(tab.testTag)
+                            )
+                        }
                     }
                 }
             }
@@ -182,28 +171,39 @@ fun MainAppContent(viewModel: DialerViewModel) {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                when (selectedTab) {
-                    NavigationTab.DIALER -> DialerScreen(
-                        viewModel = viewModel,
-                        onNavigateToUpdates = { selectedTab = NavigationTab.UPDATES }
-                    )
-                    NavigationTab.HISTORY -> HistoryScreen(
-                        viewModel = viewModel
-                    )
-                    NavigationTab.CONTACTS -> ContactsScreen(
-                        viewModel = viewModel
-                    )
-                    NavigationTab.UPDATES -> UpdatesScreen(
-                        viewModel = viewModel
-                    )
-                    NavigationTab.SETTINGS -> SettingsScreen(
-                        viewModel = viewModel
-                    )
+                when {
+                    secondaryScreen == SecondaryScreen.SETTINGS -> {
+                        SettingsScreen(
+                            viewModel = viewModel
+                        )
+                    }
+                    secondaryScreen == SecondaryScreen.UPDATES -> {
+                        UpdatesScreen(
+                            viewModel = viewModel
+                        )
+                    }
+                    else -> {
+                        when (selectedTab) {
+                            SamsungNavigationTab.KEYPAD -> DialerScreen(
+                                viewModel = viewModel,
+                                onNavigateToUpdates = { secondaryScreen = SecondaryScreen.UPDATES },
+                                onNavigateToSettings = { secondaryScreen = SecondaryScreen.SETTINGS },
+                                onNavigateToContacts = { selectedTab = SamsungNavigationTab.CONTACTS }
+                            )
+                            SamsungNavigationTab.RECENTS -> HistoryScreen(
+                                viewModel = viewModel,
+                                onNavigateToSettings = { secondaryScreen = SecondaryScreen.SETTINGS }
+                            )
+                            SamsungNavigationTab.CONTACTS -> ContactsScreen(
+                                viewModel = viewModel
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        // Active Call Fullscreen Overlay
+        // Active Call Fullscreen Overlay (Samsung Style)
         AnimatedVisibility(
             visible = callState != CallState.IDLE,
             enter = fadeIn(),

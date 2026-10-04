@@ -1,7 +1,6 @@
 package com.example.stadialler.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,13 +22,13 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -51,17 +50,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.stadialler.model.Contact
-import com.example.stadialler.ui.theme.CyanAccent
-import com.example.stadialler.ui.theme.CyanPrimary
-import com.example.stadialler.ui.theme.DarkBackground
-import com.example.stadialler.ui.theme.DarkSurface
-import com.example.stadialler.ui.theme.DarkSurfaceElevated
-import com.example.stadialler.ui.theme.DarkSurfaceVariant
-import com.example.stadialler.ui.theme.GreenConnect
-import com.example.stadialler.ui.theme.KeypadButtonBorder
-import com.example.stadialler.ui.theme.TextMuted
-import com.example.stadialler.ui.theme.TextPrimary
-import com.example.stadialler.ui.theme.TextSecondary
+import com.example.stadialler.ui.theme.SamsungBlue
+import com.example.stadialler.ui.theme.SamsungDarkBg
+import com.example.stadialler.ui.theme.SamsungGreen
+import com.example.stadialler.ui.theme.SamsungRed
+import com.example.stadialler.ui.theme.SamsungSurface
+import com.example.stadialler.ui.theme.SamsungSurfaceVariant
+import com.example.stadialler.ui.theme.SamsungTextMuted
+import com.example.stadialler.ui.theme.SamsungTextPrimary
+import com.example.stadialler.ui.theme.SamsungTextSecondary
 import com.example.stadialler.viewmodel.DialerViewModel
 
 @Composable
@@ -71,151 +68,271 @@ fun ContactsScreen(
 ) {
     val contacts by viewModel.filteredContacts.collectAsState()
     val searchQuery by viewModel.contactSearchQuery.collectAsState()
+    var isSearchActive by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .background(SamsungDarkBg)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .testTag("contacts_screen")
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "DIRECTORY",
-                        color = TextPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+        // 1. Samsung One UI Large Header & Top Actions: [Search] [+] [3-Dots]
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp, bottom = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "جهات الاتصال",
+                    color = SamsungTextPrimary,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${contacts.size} جهة اتصال",
+                    color = SamsungTextSecondary,
+                    fontSize = 12.sp
+                )
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { isSearchActive = !isSearchActive },
+                    modifier = Modifier.size(40.dp).testTag("contacts_search_toggle")
+                ) {
+                    Icon(
+                        imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
+                        contentDescription = "بحث",
+                        tint = SamsungTextPrimary,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Text(
-                        text = "${contacts.size} secure contacts & PBX extensions",
-                        color = TextSecondary,
-                        fontSize = 12.sp
+                }
+
+                IconButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.size(40.dp).testTag("add_contact_top_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "إضافة جهة اتصال",
+                        tint = SamsungTextPrimary,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Search Bar
+        // Search Input Field
+        if (isSearchActive) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setContactSearchQuery(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("contact_search_field"),
-                placeholder = { Text("Search name, number or ext...", color = TextMuted) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = CyanAccent)
-                },
+                placeholder = { Text("بحث في الأسماء أو الأرقام...", color = SamsungTextMuted) },
+                singleLine = true,
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = SamsungTextPrimary,
+                    unfocusedTextColor = SamsungTextPrimary,
+                    focusedBorderColor = SamsungGreen,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = SamsungSurfaceVariant,
+                    unfocusedContainerColor = SamsungSurfaceVariant
+                ),
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.setContactSearchQuery("") }) {
-                            Icon(imageVector = Icons.Default.Close, contentDescription = "Clear", tint = TextSecondary)
+                            Icon(Icons.Default.Close, "مسح", tint = SamsungTextSecondary)
                         }
                     }
                 },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CyanPrimary,
-                    unfocusedBorderColor = KeypadButtonBorder,
-                    focusedContainerColor = DarkSurface,
-                    unfocusedContainerColor = DarkSurface,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .testTag("contacts_search_field")
             )
+        }
 
-            Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-            // Contacts List
-            if (contacts.isEmpty()) {
-                Box(
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // Samsung "My Profile" Item
+            item {
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(SamsungSurface)
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(SamsungSurfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(54.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "No Contacts Found",
-                            color = TextSecondary,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
+                            contentDescription = "الملف الشخصي",
+                            tint = SamsungBlue,
+                            modifier = Modifier.size(26.dp)
                         )
                     }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(contacts, key = { it.id }) { contact ->
-                        ContactItem(
-                            contact = contact,
-                            onCallClick = { viewModel.startCall(contact.phoneNumber, contact.name) },
-                            onDeleteClick = { viewModel.deleteContact(contact.id) }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column {
+                        Text(
+                            text = "ملفي الشخصي",
+                            color = SamsungTextPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "STA SIP User (Ext ${viewModel.sipExt.value})",
+                            color = SamsungTextSecondary,
+                            fontSize = 12.sp
                         )
                     }
                 }
             }
-        }
 
-        // Floating Action Button to Add Contact
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            containerColor = CyanPrimary,
-            contentColor = DarkBackground,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 16.dp, end = 8.dp)
-                .testTag("add_contact_fab")
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Contact")
+            // Favorites Section
+            val favorites = contacts.filter { it.isFavorite }
+            if (favorites.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "المفضلة",
+                        color = SamsungTextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 6.dp, top = 8.dp, bottom = 2.dp)
+                    )
+                }
+
+                items(favorites, key = { "fav_${it.id}" }) { contact ->
+                    SamsungContactCard(
+                        contact = contact,
+                        onCall = { viewModel.startCall(contact.phoneNumber, contact.name) },
+                        onToggleFavorite = { viewModel.toggleFavorite(contact.id) },
+                        onDelete = { viewModel.deleteContact(contact.id) }
+                    )
+                }
+            }
+
+            // All Contacts Section
+            item {
+                Text(
+                    text = "جميع جهات الاتصال",
+                    color = SamsungTextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 6.dp, top = 12.dp, bottom = 2.dp)
+                )
+            }
+
+            items(contacts, key = { it.id }) { contact ->
+                SamsungContactCard(
+                    contact = contact,
+                    onCall = { viewModel.startCall(contact.phoneNumber, contact.name) },
+                    onToggleFavorite = { viewModel.toggleFavorite(contact.id) },
+                    onDelete = { viewModel.deleteContact(contact.id) }
+                )
+            }
         }
     }
 
+    // Add Contact Dialog
     if (showAddDialog) {
-        AddContactDialog(
-            onDismiss = { showAddDialog = false },
-            onSave = { newContact ->
-                viewModel.saveContact(newContact)
-                showAddDialog = false
-            }
+        var newName by remember { mutableStateOf("") }
+        var newPhone by remember { mutableStateOf("") }
+        var newExt by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showAddDialog = false },
+            title = { Text("إضافة جهة اتصال جديدة", color = SamsungTextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newName,
+                        onValueChange = { newName = it },
+                        label = { Text("الاسم") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = SamsungTextPrimary,
+                            unfocusedTextColor = SamsungTextPrimary,
+                            focusedBorderColor = SamsungGreen
+                        )
+                    )
+                    OutlinedTextField(
+                        value = newPhone,
+                        onValueChange = { newPhone = it },
+                        label = { Text("رقم الهاتف") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = SamsungTextPrimary,
+                            unfocusedTextColor = SamsungTextPrimary,
+                            focusedBorderColor = SamsungGreen
+                        )
+                    )
+                    OutlinedTextField(
+                        value = newExt,
+                        onValueChange = { newExt = it },
+                        label = { Text("التحويلة (اختياري)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = SamsungTextPrimary,
+                            unfocusedTextColor = SamsungTextPrimary,
+                            focusedBorderColor = SamsungGreen
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newName.isNotBlank() && newPhone.isNotBlank()) {
+                            viewModel.addContact(newName, newPhone, newExt.ifBlank { null })
+                            showAddDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SamsungGreen)
+                ) {
+                    Text("حفظ", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddDialog = false }) {
+                    Text("إلغاء", color = SamsungTextSecondary)
+                }
+            },
+            containerColor = SamsungSurfaceVariant,
+            shape = RoundedCornerShape(22.dp)
         )
     }
 }
 
 @Composable
-fun ContactItem(
+fun SamsungContactCard(
     contact: Contact,
-    onCallClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onCall: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(DarkSurface)
-            .border(1.dp, KeypadButtonBorder, RoundedCornerShape(14.dp))
-            .clickable(onClick = onCallClick)
-            .padding(14.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(SamsungSurface)
+            .clickable(onClick = onCall)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
             .testTag("contact_item_${contact.id}"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -228,14 +345,13 @@ fun ContactItem(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, CyanPrimary.copy(alpha = 0.5f), CircleShape),
+                    .background(SamsungSurfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = contact.name.take(1).uppercase(),
-                    color = CyanAccent,
-                    fontSize = 18.sp,
+                    color = SamsungGreen,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -243,195 +359,44 @@ fun ContactItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = contact.name,
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (contact.speedDialKey != null) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(CyanPrimary.copy(alpha = 0.2f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "SPEED ${contact.speedDialKey}",
-                                color = CyanAccent,
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-
                 Text(
-                    text = contact.phoneNumber + (if (!contact.extension.isNullOrBlank()) " (Ext: ${contact.extension})" else ""),
-                    color = TextSecondary,
-                    fontSize = 12.sp
+                    text = contact.name,
+                    color = SamsungTextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
                 )
-
                 Text(
-                    text = contact.department,
-                    color = TextMuted,
-                    fontSize = 11.sp
+                    text = "${contact.phoneNumber}${if (!contact.extension.isNullOrBlank()) " • تحويلة ${contact.extension}" else ""}",
+                    color = SamsungTextSecondary,
+                    fontSize = 13.sp
                 )
             }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = onCallClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(GreenConnect.copy(alpha = 0.15f))
-            ) {
+            IconButton(onClick = onToggleFavorite, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    imageVector = Icons.Default.Call,
-                    contentDescription = "Call Contact",
-                    tint = GreenConnect,
+                    imageVector = Icons.Default.Star,
+                    contentDescription = "المفضلة",
+                    tint = if (contact.isFavorite) Color(0xFFFFB300) else SamsungTextMuted,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(4.dp))
-
             IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.size(34.dp)
+                onClick = onCall,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(SamsungGreen.copy(alpha = 0.15f))
             ) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Contact",
-                    tint = TextMuted,
-                    modifier = Modifier.size(16.dp)
+                    imageVector = Icons.Default.Call,
+                    contentDescription = "اتصال",
+                    tint = SamsungGreen,
+                    modifier = Modifier.size(19.dp)
                 )
             }
         }
     }
-}
-
-@Composable
-fun AddContactDialog(
-    onDismiss: () -> Unit,
-    onSave: (Contact) -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var ext by remember { mutableStateOf("") }
-    var department by remember { mutableStateOf("Tactical Ops") }
-    var speedKeyStr by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Secure Contact", color = TextPrimary, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Full Name", color = TextSecondary) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = KeypadButtonBorder
-                    ),
-                    modifier = Modifier.fillMaxWidth().testTag("add_name_field")
-                )
-
-                OutlinedTextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = { Text("Phone Number", color = TextSecondary) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = KeypadButtonBorder
-                    ),
-                    modifier = Modifier.fillMaxWidth().testTag("add_phone_field")
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = ext,
-                        onValueChange = { ext = it },
-                        label = { Text("Ext (PBX)", color = TextSecondary) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = CyanPrimary,
-                            unfocusedBorderColor = KeypadButtonBorder
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = speedKeyStr,
-                        onValueChange = { if (it.length <= 1) speedKeyStr = it },
-                        label = { Text("Speed (1-9)", color = TextSecondary) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedBorderColor = CyanPrimary,
-                            unfocusedBorderColor = KeypadButtonBorder
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                OutlinedTextField(
-                    value = department,
-                    onValueChange = { department = it },
-                    label = { Text("Department / Unit", color = TextSecondary) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = KeypadButtonBorder
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (name.isNotBlank() && phone.isNotBlank()) {
-                        val key = speedKeyStr.toIntOrNull()
-                        onSave(
-                            Contact(
-                                name = name.trim(),
-                                phoneNumber = phone.trim(),
-                                extension = ext.takeIf { it.isNotBlank() }?.trim(),
-                                department = department.trim(),
-                                speedDialKey = if (key in 1..9) key else null
-                            )
-                        )
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = DarkBackground),
-                modifier = Modifier.testTag("save_contact_button")
-            ) {
-                Text("Save", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
-            }
-        },
-        containerColor = DarkSurface,
-        shape = RoundedCornerShape(16.dp)
-    )
 }
