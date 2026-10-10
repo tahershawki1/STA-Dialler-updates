@@ -1,9 +1,9 @@
 {
-  "versionCode": 208,
-  "versionName": "1.0.208",
-  "notes": "STA Dialler update 1.0.208",
-  "apkUrl": "https://raw.githubusercontent.com/tahershawki1/STA-Dialler-updates/updates/STA-Dialler-1.0.208.apk",
-  "sha256": "29d4ed1eaa94d0b884d88a6d5e397cec7629a8bef3de3158c2f5d7df404af9b9",
-  "sizeBytes": 1679992,
+  "versionCode": 216,
+  "versionName": "1.0.216",
+  "notes": "STA Dialler update 1.0.216",
+  "apkUrl": "https://raw.githubusercontent.com/tahershawki1/STA-Dialler-updates/updates/STA-Dialler-1.0.216.apk",
+  "sha256": "9809b132c37be74b93fb5d95325272f6c1acdfefe440df4c9b2f657b49ca27e0",
+  "sizeBytes": 1680224,
   "mandatory": false
 }
